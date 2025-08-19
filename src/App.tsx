@@ -145,7 +145,7 @@ const BinwalkPanel = ({
     formData.append('extract', 'true');
 
     try {
-      const response = await fetch('https://the-hidden-bytes-production.up.railway.app/binwalk', {
+                  const response = await fetch(`${API_BASE_URL}/binwalk`, {
         method: 'POST',
         body: formData,
       });
@@ -286,7 +286,7 @@ const RGBViewerPanel = ({ selectedFile }: { selectedFile: File | null }) => {
     setShowRgba(false);
     const formData = new FormData();
     formData.append('file', selectedFile);
-        let url = `https://the-hidden-bytes-production.up.railway.app/rgb?mode=${modeOverride||mode}`;
+            let url = `${API_BASE_URL}/rgb?mode=${modeOverride||mode}`;
     if ((modeOverride||mode) === 'bit_plane') {
       url += `&bit=${bitOverride ?? bit}&channel=${channelOverride ?? channel}`;
     }
@@ -311,7 +311,7 @@ const RGBViewerPanel = ({ selectedFile }: { selectedFile: File | null }) => {
     setShowRgba(true);
     const formData = new FormData();
     formData.append('file', selectedFile);
-    const url = `https://the-hidden-bytes-production.up.railway.app/rgb?mode=rgba_values`;
+        const url = `${API_BASE_URL}/rgb?mode=rgba_values`;
     const response = await fetch(url, { method: 'POST', body: formData });
     const data = await response.json();
     setRgbaValues(data.rgba_values || null);
@@ -584,6 +584,8 @@ const Footer = () => {
 
 
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://the-hidden-bytes-production.up.railway.app';
+
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [analysisResults, setAnalysisResults] = useState<Record<string, AnalysisResult>>({})
@@ -613,7 +615,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`https://the-hidden-bytes-production.up.railway.app/${tool.toLowerCase()}`, {
+            const response = await fetch(`${API_BASE_URL}/${tool.toLowerCase()}`, {
         method: 'POST',
         body: formData,
       })

@@ -26,7 +26,7 @@ app.add_middleware(
 async def root():
     return {"message": "Steganography Analysis API", "status": "running"}
 
-@app.post("/api/analyze/steghide")
+@app.post("/steghide")
 async def analyze_steghide(file: UploadFile = File(...), password: str = Form("")):
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
@@ -52,7 +52,7 @@ async def analyze_steghide(file: UploadFile = File(...), password: str = Form(""
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@app.post("/api/analyze/binwalk")
+@app.post("/binwalk")
 async def analyze_binwalk(file: UploadFile = File(...)):
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -120,7 +120,7 @@ async def analyze_binwalk(file: UploadFile = File(...)):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@app.post("/api/analyze/strings")
+@app.post("/strings")
 async def analyze_strings(file: UploadFile = File(...)):
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -145,7 +145,7 @@ async def analyze_strings(file: UploadFile = File(...)):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@app.post("/api/analyze/rgb")
+@app.post("/rgb")
 async def analyze_rgb(file: UploadFile = File(...), mode: str = "original", bit: int = 0, channel: str = "red"):
     try:
         content = await file.read()
@@ -202,7 +202,7 @@ async def analyze_rgb(file: UploadFile = File(...), mode: str = "original", bit:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@app.post("/api/analyze/metadata")
+@app.post("/metadata")
 async def analyze_metadata(file: UploadFile = File(...)):
     try:
         content = await file.read()
@@ -236,4 +236,5 @@ async def analyze_metadata(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

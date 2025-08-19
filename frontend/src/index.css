@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark text-white;
+  }
+}
+
+@layer components {
+  .neon-glow {
+    @apply shadow-[0_0_5px_#00ffff,0_0_10px_#00ffff,0_0_15px_#00ffff];
+  }
+  
+  .neon-glow-pink {
+    @apply shadow-[0_0_5px_#ff4f8b,0_0_10px_#ff4f8b,0_0_15px_#ff4f8b];
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-neonBlue to-neonPink bg-clip-text text-transparent;
+  }
+
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  .button-hover {
+    @apply transition-all duration-300 transform hover:scale-105 hover:shadow-xl;
+  }
+
+  .animated-border {
+    @apply relative overflow-hidden;
+  }
+
+  .animated-border::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-neonBlue via-neonPink to-neonBlue;
+    @apply animate-pulse opacity-20;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulseGlow {
+    from {
+      box-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 15px #00ffff;
+    }
+    to {
+      box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+    }
+  }
+} 

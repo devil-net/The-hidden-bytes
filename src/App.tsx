@@ -305,7 +305,7 @@ const RGBViewerPanel = ({ selectedFile }: { selectedFile: File | null }) => {
     setImageBase64('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWYyOTM3Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzAwZmZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPvCfkY0gREVNTyBNT0RFPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNjAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2Yjc2ODQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5VcGxvYWQgYW4gaW1hZ2UgdG8gc2VlIFJHQiBhbmFseXNpczwvdGV4dD48L3N2Zz4=');
     setIsLoading(false);
     return;
-    let url = `https://your-backend-api.vercel.app/api/analyze/rgb?mode=${modeOverride||mode}`;
+    let url = `https://the-hidden-bytes-backend.up.railway.app/api/analyze/rgb?mode=${modeOverride||mode}`;
     if ((modeOverride||mode) === 'bit_plane') {
       url += `&bit=${bitOverride ?? bit}&channel=${channelOverride ?? channel}`;
     }

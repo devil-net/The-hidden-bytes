@@ -57,10 +57,6 @@ Extract and display metadata information from images including EXIF data.
    npm run dev
    ```
 
-4. **Access the application**
-   - Frontend: http://localhost:3001
-   - Backend API: http://localhost:8000
-
 ## Usage
 
 1. **Upload an Image**: Drag and drop or click to select an image file

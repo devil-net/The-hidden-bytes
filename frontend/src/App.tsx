@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Tab } from '@headlessui/react'
 import { useDropzone } from 'react-dropzone'
 import { PhotoIcon, DocumentIcon, CodeBracketIcon, CircleStackIcon, ArrowDownTrayIcon, EyeIcon, ShareIcon } from '@heroicons/react/24/outline'
@@ -691,7 +691,7 @@ export default function App() {
                           <p className="mt-2 text-sm text-gray-400">Analyzing...</p>
                         </div>
                       ) : tool.name === 'Metadata' && analysisResults[tool.name]?.metadata ? (
-                        <MetadataTree data={analysisResults[tool.name].metadata} />
+                        <MetadataTree data={analysisResults[tool.name].metadata || {}} />
                       ) : tool.name === 'Metadata' && analysisResults[tool.name]?.error ? (
                         <div className="text-red-400">{analysisResults[tool.name].error}</div>
                       ) : tool.name === 'RGB Viewer' ? (

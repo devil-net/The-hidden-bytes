@@ -145,7 +145,7 @@ const BinwalkPanel = ({
     formData.append('extract', 'true');
 
     try {
-      const response = await fetch('http://localhost:8000/api/analyze/binwalk', {
+      const response = await fetch('https://your-backend-api.vercel.app/api/analyze/binwalk', {
         method: 'POST',
         body: formData,
       });
@@ -286,7 +286,7 @@ const RGBViewerPanel = ({ selectedFile }: { selectedFile: File | null }) => {
     setShowRgba(false);
     const formData = new FormData();
     formData.append('file', selectedFile);
-    let url = `http://localhost:8000/api/analyze/rgb?mode=${modeOverride||mode}`;
+    let url = `https://your-backend-api.vercel.app/api/analyze/rgb?mode=${modeOverride||mode}`;
     if ((modeOverride||mode) === 'bit_plane') {
       url += `&bit=${bitOverride ?? bit}&channel=${channelOverride ?? channel}`;
     }
@@ -311,7 +311,7 @@ const RGBViewerPanel = ({ selectedFile }: { selectedFile: File | null }) => {
     setShowRgba(true);
     const formData = new FormData();
     formData.append('file', selectedFile);
-    const url = `http://localhost:8000/api/analyze/rgb?mode=rgba_values`;
+    const url = `https://your-backend-api.vercel.app/api/analyze/rgb?mode=rgba_values`;
     const response = await fetch(url, { method: 'POST', body: formData });
     const data = await response.json();
     setRgbaValues(data.rgba_values || null);
@@ -613,7 +613,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/analyze/${tool.toLowerCase()}`, {
+      const response = await fetch(`https://your-backend-api.vercel.app/api/analyze/${tool.toLowerCase()}`, {
         method: 'POST',
         body: formData,
       })

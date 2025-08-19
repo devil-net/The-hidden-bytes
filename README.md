@@ -58,8 +58,7 @@ Extract and display metadata information from images including EXIF data.
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:3001
-   - Backend API: http://localhost:8000
+   - Live Demo: https://the-hidden-bytes.vercel.app
 
 ## Usage
 
@@ -69,13 +68,13 @@ Extract and display metadata information from images including EXIF data.
 4. **Analyze**: Click the tool tab to start analysis
 5. **View Results**: Examine the extracted data, files, or analysis results
 
-## Docker Support
+## Live Demo
 
-Run the entire application using Docker Compose:
+🚀 **Try it now**: [https://the-hidden-bytes.vercel.app](https://the-hidden-bytes.vercel.app)
 
-```bash
-docker-compose up
-```
+## Deployment
+
+This project is optimized for Vercel deployment. The frontend is deployed as a static site.
 
 ## Contributing
 

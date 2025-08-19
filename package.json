@@ -1,0 +1,13 @@
+{
+  "name": "the-hidden-bytes",
+  "version": "1.0.0",
+  "description": "A modern steganography analysis tool for CTF enthusiasts",
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "install": "cd frontend && npm install"
+  },
+  "keywords": ["steganography", "ctf", "forensics", "analysis"],
+  "author": "devil-net",
+  "license": "MIT"
+}

@@ -1,6 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-Pillow
-python-magic
-python-magic-bin; platform_system == "Windows" 

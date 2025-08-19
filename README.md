@@ -39,8 +39,8 @@ Extract and display metadata information from images including EXIF data.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/devil-net/stegno.git
-   cd stegno
+   git clone https://github.com/devil-net/The-hidden-bytes.git
+   cd The-hidden-bytes
    ```
 
 2. **Backend Setup**

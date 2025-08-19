@@ -23,5 +23,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application's code to the working directory
 COPY . .
 
-# Define the command to run the application
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
+# Set the entrypoint script as the container's entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

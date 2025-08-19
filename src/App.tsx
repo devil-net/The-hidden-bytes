@@ -145,21 +145,7 @@ const BinwalkPanel = ({
     formData.append('extract', 'true');
 
     try {
-      // Demo mode - show sample results
-      setAnalysisResults(prev => ({
-        ...prev,
-        Binwalk: {
-          success: true,
-          output: '🔍 DEMO MODE - Sample Binwalk Analysis\n\nThis is a frontend-only demo. In a full deployment, Binwalk would:\n\n• Scan for embedded files and filesystems\n• Extract hidden archives, images, and executables\n• Identify file signatures and magic bytes\n• Reveal embedded firmware and data structures\n\n📝 To enable full functionality, deploy the Python backend with:\n- FastAPI server\n- Binwalk tool installed\n- File processing capabilities',
-          analysis: [
-            { offset: 0, type: 'JPEG', description: 'JPEG image data' },
-            { offset: 1024, type: 'ZIP', description: 'Zip archive data' },
-            { offset: 2048, type: 'TEXT', description: 'ASCII text file' }
-          ]
-        }
-      }));
-      return;
-      const response = await fetch('https://your-backend-api.vercel.app/api/analyze/binwalk', {
+      const response = await fetch('https://the-hidden-bytes-production.up.railway.app/binwalk', {
         method: 'POST',
         body: formData,
       });
@@ -300,12 +286,7 @@ const RGBViewerPanel = ({ selectedFile }: { selectedFile: File | null }) => {
     setShowRgba(false);
     const formData = new FormData();
     formData.append('file', selectedFile);
-    // Demo mode - show sample RGB analysis
-    setDimensions({width: 800, height: 600});
-    setImageBase64('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWYyOTM3Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzAwZmZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPvCfkY0gREVNTyBNT0RFPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNjAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2Yjc2ODQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5VcGxvYWQgYW4gaW1hZ2UgdG8gc2VlIFJHQiBhbmFseXNpczwvdGV4dD48L3N2Zz4=');
-    setIsLoading(false);
-    return;
-    let url = `https://the-hidden-bytes-backend.up.railway.app/api/analyze/rgb?mode=${modeOverride||mode}`;
+        let url = `https://the-hidden-bytes-production.up.railway.app/rgb?mode=${modeOverride||mode}`;
     if ((modeOverride||mode) === 'bit_plane') {
       url += `&bit=${bitOverride ?? bit}&channel=${channelOverride ?? channel}`;
     }
@@ -330,14 +311,7 @@ const RGBViewerPanel = ({ selectedFile }: { selectedFile: File | null }) => {
     setShowRgba(true);
     const formData = new FormData();
     formData.append('file', selectedFile);
-    // Demo mode - show sample RGBA values
-    setRgbaValues([
-      [255, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255],
-      [255, 255, 0, 255], [255, 0, 255, 255], [0, 255, 255, 255]
-    ]);
-    setIsLoading(false);
-    return;
-    const url = `https://your-backend-api.vercel.app/api/analyze/rgb?mode=rgba_values`;
+    const url = `https://the-hidden-bytes-production.up.railway.app/rgb?mode=rgba_values`;
     const response = await fetch(url, { method: 'POST', body: formData });
     const data = await response.json();
     setRgbaValues(data.rgba_values || null);
@@ -639,47 +613,7 @@ export default function App() {
     }
 
     try {
-      // Demo mode - show sample results for each tool
-      const demoResults = {
-        'Steghide': {
-          success: true,
-          output: '🔍 DEMO MODE - Sample Steghide Analysis\n\n📝 This is a frontend-only demo. In full deployment, Steghide would:\n\n• Extract hidden messages from images\n• Support password-protected data\n• Reveal embedded text files\n• Decode steganographic content\n\n🔑 Password field is functional for demo purposes\n\n⚠️ To enable real extraction, deploy the Python backend with steghide installed.'
-        },
-        'Strings': {
-          success: true,
-          strings: [
-            'DEMO MODE - Sample extracted strings:',
-            'hidden_message.txt',
-            'secret_data_here',
-            'https://example.com/flag',
-            'CTF{demo_flag_12345}',
-            'This is a sample string extraction',
-            'In real deployment, this would show actual file strings'
-          ]
-        },
-        'Metadata': {
-          success: true,
-          metadata: {
-            'Demo Mode': 'Frontend Only',
-            'File Type': 'Sample Image',
-            'Dimensions': '800x600',
-            'Color Space': 'RGB',
-            'Created': '2024-01-01',
-            'Software': 'Demo Generator',
-            'Note': 'Deploy backend for real metadata extraction'
-          }
-        }
-      };
-      
-      setAnalysisResults(prev => ({
-        ...prev,
-        [tool]: (demoResults as any)[tool] || {
-          success: true,
-          output: `🔍 DEMO MODE - ${tool} Analysis\n\nThis is a frontend-only demo. Deploy the Python backend to enable real ${tool.toLowerCase()} functionality.`
-        }
-      }));
-      return;
-      const response = await fetch(`https://your-backend-api.vercel.app/api/analyze/${tool.toLowerCase()}`, {
+      const response = await fetch(`https://the-hidden-bytes-production.up.railway.app/${tool.toLowerCase()}`, {
         method: 'POST',
         body: formData,
       })

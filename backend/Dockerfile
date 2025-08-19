@@ -23,4 +23,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application's code to the working directory
 COPY . .
 
-# The command to run the application will be taken from railway.toml
+# Define the command to run the application
+CMD uvicorn main:app --host 0.0.0.0 --port $PORT

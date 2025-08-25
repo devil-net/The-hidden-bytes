@@ -8,10 +8,14 @@ WORKDIR /app
 # - binutils provides the 'strings' command
 # - steghide is for steghide
 # - binwalk is for binwalk
+# - p7zip-full provides 7z command for archive extraction
+# - file provides file type detection
 RUN apt-get update && apt-get install -y --no-install-recommends \
     binutils \
     steghide \
     binwalk \
+    p7zip-full \
+    file \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the dependencies file to the working directory

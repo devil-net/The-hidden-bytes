@@ -15,6 +15,8 @@ import time
 from datetime import datetime
 import mimetypes
 import hashlib
+import zipfile
+import shutil
 
 app = FastAPI(title="Steganography Analysis API")
 
@@ -192,9 +194,9 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
         # Only run extraction if explicitly requested
         if extract.lower() == "true":
             try:
-                # Run binwalk extraction with specific options
+                # First try binwalk extraction without --run-as parameter
                 extract_result = subprocess.run(
-                    ["binwalk", "-e", "--run-as=any", temp_file_path],
+                    ["binwalk", "-e", temp_file_path],
                     capture_output=True,
                     text=True,
                     cwd=work_dir,
@@ -203,9 +205,7 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
                 
                 extraction_output = extract_result.stdout
                 
-                if extract_result.returncode != 0:
-                    extraction_error = extract_result.stderr
-                else:
+                if extract_result.returncode == 0:
                     # Look for extracted directory
                     base_name = os.path.basename(temp_file_path)
                     extract_dir = os.path.join(work_dir, f"_{base_name}.extracted")
@@ -217,17 +217,95 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
                                 try:
                                     file_size = os.path.getsize(file_path)
                                     rel_path = os.path.relpath(file_path, extract_dir)
+                                    # Try to get file content preview
+                                    content_preview = ""
+                                    try:
+                                        if file_size < 1000:  # Only preview small files
+                                            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                                content_preview = f.read(200)
+                                    except:
+                                        pass
+                                    
                                     extracted_files.append({
                                         "name": file_name,
                                         "size": file_size,
-                                        "path": rel_path
+                                        "path": rel_path,
+                                        "content_preview": content_preview
                                     })
                                 except OSError:
-                                    # Skip files that can't be accessed
                                     continue
+                else:
+                    # Binwalk failed, try alternative extraction methods
+                    extraction_error = f"Binwalk extraction failed: {extract_result.stderr}"
                     
-                    if not extracted_files and not extraction_error:
-                        extraction_error = "No files were extracted. The file may not contain embedded data."
+                    # Try ZIP extraction if file appears to be compressed
+                    try:
+                        with zipfile.ZipFile(temp_file_path, 'r') as zip_ref:
+                            zip_extract_dir = os.path.join(work_dir, "zip_extracted")
+                            os.makedirs(zip_extract_dir, exist_ok=True)
+                            zip_ref.extractall(zip_extract_dir)
+                            
+                            # List extracted files
+                            for root, dirs, files in os.walk(zip_extract_dir):
+                                for file_name in files:
+                                    file_path = os.path.join(root, file_name)
+                                    try:
+                                        file_size = os.path.getsize(file_path)
+                                        rel_path = os.path.relpath(file_path, zip_extract_dir)
+                                        extracted_files.append({
+                                            "name": file_name,
+                                            "size": file_size,
+                                            "path": rel_path,
+                                            "extraction_method": "ZIP"
+                                        })
+                                    except OSError:
+                                        continue
+                            
+                            if extracted_files:
+                                extraction_error = None
+                                extraction_output += "\n[Fallback] Successfully extracted as ZIP archive"
+                                
+                    except zipfile.BadZipFile:
+                        # Try 7zip extraction
+                        try:
+                            seven_zip_result = subprocess.run(
+                                ["7z", "x", temp_file_path, f"-o{work_dir}/7z_extracted"],
+                                capture_output=True,
+                                text=True,
+                                timeout=30
+                            )
+                            
+                            if seven_zip_result.returncode == 0:
+                                seven_zip_dir = os.path.join(work_dir, "7z_extracted")
+                                if os.path.exists(seven_zip_dir):
+                                    for root, dirs, files in os.walk(seven_zip_dir):
+                                        for file_name in files:
+                                            file_path = os.path.join(root, file_name)
+                                            try:
+                                                file_size = os.path.getsize(file_path)
+                                                rel_path = os.path.relpath(file_path, seven_zip_dir)
+                                                extracted_files.append({
+                                                    "name": file_name,
+                                                    "size": file_size,
+                                                    "path": rel_path,
+                                                    "extraction_method": "7ZIP"
+                                                })
+                                            except OSError:
+                                                continue
+                                    
+                                    if extracted_files:
+                                        extraction_error = None
+                                        extraction_output += "\n[Fallback] Successfully extracted with 7zip"
+                                        
+                        except (FileNotFoundError, subprocess.TimeoutExpired):
+                            # 7zip not available or timed out
+                            pass
+                    
+                    except Exception:
+                        pass
+                
+                if not extracted_files and not extraction_error:
+                    extraction_error = "No files were extracted. The file may not contain embedded data or may be encrypted."
                         
             except subprocess.TimeoutExpired:
                 extraction_error = "Extraction timed out after 60 seconds."

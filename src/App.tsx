@@ -584,7 +584,8 @@ const Footer = () => {
 
 
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://the-hidden-bytes-production.up.railway.app';
+// Use environment variable for API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://the-hidden-bytes-production-7988.up.railway.app';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -614,8 +615,19 @@ export default function App() {
       formData.append('password', steghidePassword)
     }
 
+    // Map tool names to API endpoints
+    const toolEndpoints: Record<string, string> = {
+      'Steghide': 'steghide',
+      'Binwalk': 'binwalk',
+      'Strings': 'strings',
+      'RGB Viewer': 'rgb',
+      'Metadata': 'metadata'
+    }
+
+    const endpoint = toolEndpoints[tool] || tool.toLowerCase()
+
     try {
-            const response = await fetch(`${API_BASE_URL}/${tool.toLowerCase()}`, {
+            const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
         method: 'POST',
         body: formData,
       })
@@ -692,10 +704,6 @@ export default function App() {
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neonBlue mx-auto"></div>
                           <p className="mt-2 text-sm text-gray-400">Analyzing...</p>
                         </div>
-                      ) : tool.name === 'Metadata' && analysisResults[tool.name]?.metadata ? (
-                        <MetadataTree data={analysisResults[tool.name].metadata || {}} />
-                      ) : tool.name === 'Metadata' && analysisResults[tool.name]?.error ? (
-                        <div className="text-red-400">{analysisResults[tool.name].error}</div>
                       ) : tool.name === 'RGB Viewer' ? (
                         <RGBViewerPanel selectedFile={selectedFile} />
                       ) : tool.name === 'Binwalk' ? (
@@ -713,12 +721,29 @@ export default function App() {
                           onAnalyze={() => analyzeImage('Steghide')}
                           isAnalyzing={isAnalyzing}
                         />
+                      ) : tool.name === 'Metadata' && analysisResults[tool.name]?.metadata ? (
+                        <MetadataTree data={analysisResults[tool.name].metadata || {}} />
+                      ) : tool.name === 'Metadata' && analysisResults[tool.name]?.error ? (
+                        <div className="text-red-400">{analysisResults[tool.name].error}</div>
+                      ) : tool.name === 'Strings' && analysisResults[tool.name]?.strings ? (
+                        <div className="bg-dark/50 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold mb-2 text-white">Extracted Strings</h3>
+                          <div className="max-h-96 overflow-auto">
+                            <pre className="text-sm text-gray-300 whitespace-pre-wrap">
+                              {analysisResults[tool.name].strings?.join('\n')}
+                            </pre>
+                          </div>
+                        </div>
+                      ) : tool.name === 'Strings' && analysisResults[tool.name]?.error ? (
+                        <div className="text-red-400">{analysisResults[tool.name].error}</div>
                       ) : analysisResults[tool.name] ? (
                         <pre className="text-sm overflow-auto max-h-96">
                           {JSON.stringify(analysisResults[tool.name], null, 2)}
                         </pre>
+                      ) : !selectedFile ? (
+                        <p className="text-center text-gray-400">Please select a file first</p>
                       ) : (
-                        <p className="text-center text-gray-400">Select a file and click the tool to analyze</p>
+                        <p className="text-center text-gray-400">Click to analyze with {tool.name}</p>
                       )}
                     </Tab.Panel>
                   ))}

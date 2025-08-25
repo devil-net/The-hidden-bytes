@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import subprocess
 import tempfile
 import os
@@ -17,6 +17,7 @@ import mimetypes
 import hashlib
 import zipfile
 import shutil
+import uuid
 
 app = FastAPI(title="Steganography Analysis API")
 
@@ -122,13 +123,39 @@ async def analyze_steghide(file: UploadFile = File(...), password: str = Form(""
         except Exception:
             pass
         
+        # Create download ZIP if files were extracted
+        download_id = None
+        if extracted_files:
+            try:
+                download_id = str(uuid.uuid4())
+                zip_path = os.path.join(tempfile.gettempdir(), f"extracted_{download_id}.zip")
+                
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for file_info in extracted_files:
+                        # Add the extracted file content to ZIP
+                        if 'content_preview' in file_info and file_info['content_preview']:
+                            zipf.writestr(file_info['name'], file_info['content_preview'])
+                        else:
+                            # Try to find the actual file in work directory
+                            for item in os.listdir(work_dir):
+                                if item == file_info['name']:
+                                    item_path = os.path.join(work_dir, item)
+                                    if os.path.isfile(item_path):
+                                        zipf.write(item_path, file_info['name'])
+                                        break
+                
+            except Exception as e:
+                print(f"Failed to create steghide download ZIP: {e}")
+                download_id = None
+
         return {
             "success": True,
             "info_output": info_result.stdout,
             "extraction_output": extraction_output,
             "extracted_files": extracted_files,
             "extraction_error": extraction_error,
-            "has_hidden_data": info_result.returncode == 0
+            "has_hidden_data": info_result.returncode == 0,
+            "download_id": download_id
         }
                 
     except Exception as e:
@@ -312,12 +339,50 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
             except Exception as extract_ex:
                 extraction_error = f"Extraction failed: {str(extract_ex)}"
         
-        # Clean up
+        # Create download ZIP if files were extracted
+        download_id = None
+        if extracted_files:
+            try:
+                download_id = str(uuid.uuid4())
+                zip_path = os.path.join(tempfile.gettempdir(), f"extracted_{download_id}.zip")
+                
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    # Add extracted files to ZIP
+                    if os.path.exists(os.path.join(work_dir, f"_{os.path.basename(temp_file_path)}.extracted")):
+                        extract_dir = os.path.join(work_dir, f"_{os.path.basename(temp_file_path)}.extracted")
+                        for root, dirs, files in os.walk(extract_dir):
+                            for file_name in files:
+                                file_path = os.path.join(root, file_name)
+                                arcname = os.path.relpath(file_path, extract_dir)
+                                zipf.write(file_path, arcname)
+                    
+                    # Add ZIP extracted files
+                    if os.path.exists(os.path.join(work_dir, "zip_extracted")):
+                        zip_extract_dir = os.path.join(work_dir, "zip_extracted")
+                        for root, dirs, files in os.walk(zip_extract_dir):
+                            for file_name in files:
+                                file_path = os.path.join(root, file_name)
+                                arcname = os.path.relpath(file_path, zip_extract_dir)
+                                zipf.write(file_path, arcname)
+                    
+                    # Add 7zip extracted files
+                    if os.path.exists(os.path.join(work_dir, "7z_extracted")):
+                        seven_zip_dir = os.path.join(work_dir, "7z_extracted")
+                        for root, dirs, files in os.walk(seven_zip_dir):
+                            for file_name in files:
+                                file_path = os.path.join(root, file_name)
+                                arcname = os.path.relpath(file_path, seven_zip_dir)
+                                zipf.write(file_path, arcname)
+                
+            except Exception as e:
+                print(f"Failed to create download ZIP: {e}")
+                download_id = None
+        
+        # Clean up work directory
         try:
             import shutil
             shutil.rmtree(work_dir)
         except Exception:
-            # If cleanup fails, continue anyway
             pass
         
         return {
@@ -326,7 +391,8 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
             "analysis": analysis,
             "extracted_files": extracted_files,
             "extraction_output": extraction_output,
-            "extraction_error": extraction_error
+            "extraction_error": extraction_error,
+            "download_id": download_id
         }
         
     except Exception as e:
@@ -768,4 +834,22 @@ async def analyze_metadata(file: UploadFile = File(...)):
         
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@app.get("/download/{download_id}")
+async def download_extracted_files(download_id: str):
+    try:
+        zip_path = os.path.join(tempfile.gettempdir(), f"extracted_{download_id}.zip")
+        
+        if not os.path.exists(zip_path):
+            raise HTTPException(status_code=404, detail="Download file not found or expired")
+        
+        return FileResponse(
+            path=zip_path,
+            filename=f"extracted_files_{download_id[:8]}.zip",
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename=extracted_files_{download_id[:8]}.zip"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 

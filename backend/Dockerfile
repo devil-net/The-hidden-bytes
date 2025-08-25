@@ -30,5 +30,8 @@ COPY . .
 # Make the entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
 
+# Run as root to allow binwalk extraction
+USER root
+
 # Set the entrypoint script as the container's entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]

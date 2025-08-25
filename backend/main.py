@@ -194,9 +194,9 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
         # Only run extraction if explicitly requested
         if extract.lower() == "true":
             try:
-                # First try binwalk extraction without --run-as parameter
+                # First try binwalk extraction with --run-as=root parameter
                 extract_result = subprocess.run(
-                    ["binwalk", "-e", temp_file_path],
+                    ["binwalk", "-e", "--run-as=root", temp_file_path],
                     capture_output=True,
                     text=True,
                     cwd=work_dir,

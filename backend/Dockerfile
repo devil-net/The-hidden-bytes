@@ -10,13 +10,20 @@ WORKDIR /app
 # - binwalk is for binwalk
 # - p7zip-full provides 7z command for archive extraction
 # - file provides file type detection
+# - ruby and ruby-dev for zsteg gem installation
 RUN apt-get update && apt-get install -y --no-install-recommends \
     binutils \
     steghide \
     binwalk \
     p7zip-full \
     file \
+    ruby \
+    ruby-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# Install zsteg gem
+RUN gem install zsteg
 
 # Copy the dependencies file to the working directory
 COPY requirements.txt .

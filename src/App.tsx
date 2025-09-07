@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Tab } from '@headlessui/react'
 import { useDropzone } from 'react-dropzone'
-import { PhotoIcon, DocumentIcon, CodeBracketIcon, CircleStackIcon, ArrowDownTrayIcon, EyeIcon, ShareIcon } from '@heroicons/react/24/outline'
+import { PhotoIcon, DocumentIcon, CodeBracketIcon, CircleStackIcon, ArrowDownTrayIcon, EyeIcon, ShareIcon, FilmIcon, MusicalNoteIcon, DocumentTextIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline'
 
 interface Tool {
   name: string;
@@ -36,6 +36,7 @@ interface AnalysisResult {
   }>;
   extraction_output?: string;
   extraction_error?: string;
+  download_id?: string;
 }
 
 // Header Component
@@ -118,10 +119,35 @@ function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ')
 }
 
+// Function to get appropriate icon and color for file type
+const getFileIcon = (file: File | null) => {
+  if (!file) return { icon: PhotoIcon, color: 'text-gray-400' }
+  
+  const type = file.type.toLowerCase()
+  const extension = file.name.split('.').pop()?.toLowerCase()
+  
+  if (type.startsWith('image/')) {
+    return { icon: PhotoIcon, color: 'text-neonBlue' }
+  } else if (type.startsWith('video/')) {
+    return { icon: FilmIcon, color: 'text-neonPink' }
+  } else if (type.startsWith('audio/')) {
+    return { icon: MusicalNoteIcon, color: 'text-green-400' }
+  } else if (type === 'application/pdf' || extension === 'pdf') {
+    return { icon: DocumentTextIcon, color: 'text-red-400' }
+  } else if (type.includes('zip') || type.includes('archive') || ['zip', 'rar', '7z'].includes(extension || '')) {
+    return { icon: ArchiveBoxIcon, color: 'text-yellow-400' }
+  } else if (type.startsWith('text/') || ['txt', 'log', 'csv', 'json', 'xml', 'html', 'css', 'js'].includes(extension || '')) {
+    return { icon: CodeBracketIcon, color: 'text-purple-400' }
+  } else {
+    return { icon: DocumentIcon, color: 'text-gray-400' }
+  }
+}
+
 const tools: Tool[] = [
   { name: 'Steghide', icon: PhotoIcon, color: 'text-neonBlue' },
   { name: 'Binwalk', icon: DocumentIcon, color: 'text-neonPink' },
   { name: 'Strings', icon: CodeBracketIcon, color: 'text-neonBlue' },
+  { name: 'Zsteg', icon: PhotoIcon, color: 'text-green-400' },
   { name: 'RGB Viewer', icon: PhotoIcon, color: 'text-neonPink' },
   { name: 'Metadata', icon: CircleStackIcon, color: 'text-neonBlue' },
 ]
@@ -137,7 +163,7 @@ const BinwalkPanel = ({
 }) => {
   const [isExtracting, setIsExtracting] = useState(false);
 
-  const handleExtract = async () => {
+  const handleExtractAndDownload = async () => {
     if (!selectedFile) return;
     setIsExtracting(true);
     const formData = new FormData();
@@ -145,7 +171,7 @@ const BinwalkPanel = ({
     formData.append('extract', 'true');
 
     try {
-                  const response = await fetch(`${API_BASE_URL}/binwalk`, {
+      const response = await fetch(`${API_BASE_URL}/binwalk`, {
         method: 'POST',
         body: formData,
       });
@@ -158,10 +184,20 @@ const BinwalkPanel = ({
       
       if (data.success === false) {
         console.error('Extraction failed:', data.error || data.extraction_error);
-        // Show error to user
         alert(`Extraction failed: ${data.error || data.extraction_error || 'Unknown error'}`);
       } else {
         setAnalysisResults(prev => ({ ...prev, 'Binwalk': data }));
+        
+        // If extraction was successful and we have a download_id, trigger download
+        if (data.download_id && data.extracted_files && data.extracted_files.length > 0) {
+          const downloadUrl = `${API_BASE_URL}/download/${data.download_id}`;
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = `binwalk_extracted_${data.download_id.substring(0, 8)}.zip`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
       }
     } catch (error) {
       console.error('Error extracting files:', error);
@@ -207,12 +243,12 @@ const BinwalkPanel = ({
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">Extracted Files</h3>
           <button
-            onClick={handleExtract}
+            onClick={handleExtractAndDownload}
             disabled={isExtracting}
             className="px-6 py-3 bg-gradient-to-r from-neonBlue to-neonPink text-white rounded-lg hover:from-neonBlue/80 hover:to-neonPink/80 disabled:opacity-50 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <ArrowDownTrayIcon className="h-5 w-5" />
-            {isExtracting ? 'Extracting...' : 'Extract Files'}
+            {isExtracting ? 'Extracting & Preparing Download...' : 'Download ZIP'}
           </button>
         </div>
         
@@ -472,6 +508,25 @@ const SteghidePanel = ({
                   {result.output}
                 </pre>
               )}
+              {result.download_id && result.extracted_files && result.extracted_files.length > 0 && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => {
+                      const downloadUrl = `${API_BASE_URL}/download/${result.download_id}`;
+                      const link = document.createElement('a');
+                      link.href = downloadUrl;
+                      link.download = `steghide_extracted_${result.download_id?.substring(0, 8)}.zip`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Download Extracted Files
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-red-400">
@@ -501,6 +556,10 @@ const TOOL_INFO = {
   Strings: {
     title: 'Strings',
     description: 'The strings command is a simple but powerful tool that extracts printable character sequences from a binary file. It\'s useful for finding plain text data, such as usernames, passwords, URLs, or even the flag itself, that might be hidden within an executable or other binary file. A common use case is piping the output to grep to search for specific keywords, like strings <filename> | grep \'flag\'.'
+  },
+  Zsteg: {
+    title: 'Zsteg',
+    description: 'Zsteg is a Ruby gem specifically designed for detecting steganographic data hidden in PNG and BMP images. It automatically checks for data hidden in various bit planes and color channels using different steganographic techniques. Unlike other tools that require you to specify parameters, zsteg tries multiple detection methods automatically, making it extremely useful for CTF challenges. It can detect LSB steganography, bit-plane analysis, and other hiding techniques. Simply run zsteg <filename.png> to see if any hidden data is found.'
   },
   'RGB Viewer': {
     title: 'Bit Panels',
@@ -589,17 +648,50 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://the-hidden-bytes-p
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [analysisResults, setAnalysisResults] = useState<Record<string, AnalysisResult>>({})
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [steghidePassword, setSteghidePassword] = useState('')
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp']
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.tiff', '.ico'],
+      'video/*': ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v'],
+      'audio/*': ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a'],
+      'application/pdf': ['.pdf'],
+      'application/zip': ['.zip', '.rar', '.7z'],
+      'application/x-executable': ['.exe'],
+      'text/*': ['.txt', '.log', '.csv', '.json', '.xml', '.html', '.css', '.js'],
+      'application/octet-stream': []
     },
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 100 * 1024 * 1024, // 100MB
     onDrop: (acceptedFiles: File[]) => {
-      setSelectedFile(acceptedFiles[0])
+      const file = acceptedFiles[0]
+      if (file) {
+        setSelectedFile(file)
+        
+        // Clear previous preview and create new one only for images
+        setImagePreview(null)
+        
+        // Only create preview for image files
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            const result = e.target?.result
+            if (result && typeof result === 'string') {
+              setImagePreview(result)
+            }
+          }
+          reader.onerror = () => {
+            console.error('Error reading file for preview')
+            setImagePreview(null)
+          }
+          reader.readAsDataURL(file)
+        }
+      } else {
+        setSelectedFile(null)
+        setImagePreview(null)
+      }
     }
   })
 
@@ -620,6 +712,7 @@ export default function App() {
       'Steghide': 'steghide',
       'Binwalk': 'binwalk',
       'Strings': 'strings',
+      'Zsteg': 'zsteg',
       'RGB Viewer': 'rgb',
       'Metadata': 'metadata'
     }
@@ -657,16 +750,55 @@ export default function App() {
                   ${isDragActive ? 'border-neonBlue bg-slate/50' : 'border-gray-600 hover:border-neonPink'}`}
               >
                 <input {...getInputProps()} />
-                <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-400">
-                  {isDragActive
-                    ? "Drop the image here..."
-                    : "Drag 'n' drop an image here, or click to select"}
-                </p>
-                {selectedFile && (
-                  <p className="mt-2 text-sm text-neonBlue">
-                    Selected: {selectedFile.name}
-                  </p>
+                {selectedFile ? (
+                  <div className="space-y-4">
+                    {imagePreview ? (
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="mx-auto max-h-48 max-w-full rounded-lg shadow-lg border border-gray-600"
+                      />
+                    ) : (
+                      <div className="mx-auto max-h-48 max-w-full rounded-lg shadow-lg border border-gray-600 bg-gray-800 flex items-center justify-center p-8">
+                        <div className="text-center">
+                          {(() => {
+                            const { icon: FileIcon, color } = getFileIcon(selectedFile)
+                            return (
+                              <>
+                                <FileIcon className={`mx-auto h-16 w-16 ${color} mb-4`} />
+                                <p className="text-sm text-gray-400">
+                                  {selectedFile.type.startsWith('image/') ? 'Loading preview...' : 'File ready for analysis'}
+                                </p>
+                              </>
+                            )
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <p className="text-sm text-neonBlue font-medium">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • {selectedFile.type || 'Unknown type'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Click or drag to change file
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-400">
+                      {isDragActive
+                        ? "Drop the file here..."
+                        : "Drag 'n' drop any file here, or click to select"}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Supports images, videos, audio, PDFs, archives, and more
+                    </p>
+                  </>
                 )}
               </div>
             </div>
@@ -736,6 +868,30 @@ export default function App() {
                         </div>
                       ) : tool.name === 'Strings' && analysisResults[tool.name]?.error ? (
                         <div className="text-red-400">{analysisResults[tool.name].error}</div>
+                      ) : tool.name === 'Zsteg' && analysisResults[tool.name] ? (
+                        <div className="bg-dark/50 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold mb-2 text-white">Zsteg Analysis Results</h3>
+                          {analysisResults[tool.name].success ? (
+                            analysisResults[tool.name].output ? (
+                              <div className="max-h-96 overflow-auto">
+                                <pre className="text-sm text-gray-300 whitespace-pre-wrap bg-slate/50 p-3 rounded">
+                                  {analysisResults[tool.name].output}
+                                </pre>
+                              </div>
+                            ) : (
+                              <p className="text-gray-400">No hidden data detected in this image.</p>
+                            )
+                          ) : (
+                            <div className="text-red-400">
+                              <p className="font-medium">Analysis failed</p>
+                              {analysisResults[tool.name].error && (
+                                <pre className="text-sm text-red-300 whitespace-pre-wrap mt-2 bg-red-900/20 p-3 rounded">
+                                  {analysisResults[tool.name].error}
+                                </pre>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       ) : analysisResults[tool.name] ? (
                         <pre className="text-sm overflow-auto max-h-96">
                           {JSON.stringify(analysisResults[tool.name], null, 2)}

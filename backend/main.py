@@ -128,7 +128,7 @@ async def analyze_steghide(file: UploadFile = File(...), password: str = Form(""
         if extracted_files:
             try:
                 download_id = str(uuid.uuid4())
-                zip_path = os.path.join(tempfile.gettempdir(), f"extracted_{download_id}.zip")
+                zip_path = os.path.join(tempfile.gettempdir(), f"steghide_{download_id}.zip")
                 
                 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                     for file_info in extracted_files:
@@ -344,7 +344,7 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
         if extracted_files:
             try:
                 download_id = str(uuid.uuid4())
-                zip_path = os.path.join(tempfile.gettempdir(), f"extracted_{download_id}.zip")
+                zip_path = os.path.join(tempfile.gettempdir(), f"binwalk_{download_id}.zip")
                 
                 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                     # Add extracted files to ZIP
@@ -375,7 +375,7 @@ async def analyze_binwalk(file: UploadFile = File(...), extract: str = Form("fal
                                 zipf.write(file_path, arcname)
                 
             except Exception as e:
-                print(f"Failed to create download ZIP: {e}")
+                print(f"Failed to create binwalk download ZIP: {e}")
                 download_id = None
         
         # Clean up work directory
@@ -838,18 +838,102 @@ async def analyze_metadata(file: UploadFile = File(...)):
 @app.get("/download/{download_id}")
 async def download_extracted_files(download_id: str):
     try:
-        zip_path = os.path.join(tempfile.gettempdir(), f"extracted_{download_id}.zip")
+        # Try different file patterns
+        possible_paths = [
+            os.path.join(tempfile.gettempdir(), f"binwalk_{download_id}.zip"),
+            os.path.join(tempfile.gettempdir(), f"steghide_{download_id}.zip"),
+            os.path.join(tempfile.gettempdir(), f"extracted_{download_id}.zip")  # Legacy support
+        ]
         
-        if not os.path.exists(zip_path):
+        zip_path = None
+        file_type = "extracted"
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                zip_path = path
+                if "binwalk_" in path:
+                    file_type = "binwalk"
+                elif "steghide_" in path:
+                    file_type = "steghide"
+                break
+        
+        if not zip_path:
             raise HTTPException(status_code=404, detail="Download file not found or expired")
         
         return FileResponse(
             path=zip_path,
-            filename=f"extracted_files_{download_id[:8]}.zip",
+            filename=f"{file_type}_extracted_{download_id[:8]}.zip",
             media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename=extracted_files_{download_id[:8]}.zip"}
+            headers={"Content-Disposition": f"attachment; filename={file_type}_extracted_{download_id[:8]}.zip"}
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+
+@app.post("/zsteg")
+async def analyze_zsteg(file: UploadFile = File(...)):
+    try:
+        # Create a dedicated working directory
+        work_dir = tempfile.mkdtemp(prefix="zsteg_")
+        
+        # Determine file extension
+        file_ext = ".png"
+        if file.filename and "." in file.filename:
+            file_ext = "." + file.filename.split(".")[-1]
+        
+        temp_file_path = os.path.join(work_dir, f"input{file_ext}")
+        
+        content = await file.read()
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(content)
+        
+        # Run zsteg analysis
+        result = subprocess.run(
+            ["zsteg", temp_file_path],
+            capture_output=True,
+            text=True,
+            cwd=work_dir,
+            timeout=60
+        )
+        
+        output = result.stdout if result.stdout else ""
+        error = result.stderr if result.stderr else ""
+        
+        # Clean up
+        try:
+            import shutil
+            shutil.rmtree(work_dir)
+        except Exception:
+            pass
+        
+        return {
+            "success": result.returncode == 0,
+            "output": output,
+            "error": error if result.returncode != 0 else None,
+            "has_hidden_data": bool(output.strip()) and result.returncode == 0
+        }
+                
+    except subprocess.TimeoutExpired:
+        # Clean up on timeout
+        try:
+            import shutil
+            if 'work_dir' in locals():
+                shutil.rmtree(work_dir)
+        except Exception:
+            pass
+        return {"success": False, "error": "zsteg analysis timed out after 60 seconds"}
+    except Exception as e:
+        # Clean up on error
+        try:
+            import shutil
+            if 'work_dir' in locals():
+                shutil.rmtree(work_dir)
+        except Exception:
+            pass
+        return {"success": False, "error": str(e)}
+
+@app.get("/download_zip/{download_id}")
+async def download_zip_files(download_id: str):
+    """Dedicated endpoint for ZIP downloads with better naming"""
+    return await download_extracted_files(download_id)
 

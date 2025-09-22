@@ -644,7 +644,7 @@ const Footer = () => {
 
 
 // Use environment variable for API URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://the-hidden-bytes-production-7988.up.railway.app';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://the-hidden-bytes-production.up.railway.app';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)

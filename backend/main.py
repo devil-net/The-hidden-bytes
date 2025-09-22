@@ -27,13 +27,14 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173",
+        "https://thehiddenbytes.vercel.app",
         "https://*.vercel.app",
-        "https://vercel.app",
-        "*"  # Allow all origins for now - restrict in production
+        "https://vercel.app"
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"]
 )
 
 @app.get("/")

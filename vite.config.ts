@@ -9,6 +9,6 @@ export default defineConfig({
   },
   define: {
     // Ensure environment variables are available at build time
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'https://the-hidden-bytes-production-7988.up.railway.app'),
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'https://the-hidden-bytes-production.up.railway.app'),
   },
 })

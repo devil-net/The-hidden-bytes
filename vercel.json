@@ -10,11 +10,11 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://the-hidden-bytes-production-7988.up.railway.app"
+    "VITE_API_URL": "https://the-hidden-bytes-production.up.railway.app"
   },
   "build": {
     "env": {
-      "VITE_API_URL": "https://the-hidden-bytes-production-7988.up.railway.app"
+      "VITE_API_URL": "https://the-hidden-bytes-production.up.railway.app"
     }
   }
 }

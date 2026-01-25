@@ -58,7 +58,7 @@ Extract and display metadata information from images including EXIF data.
    ```
 
 4. **Access the application**
-   - [Live Demo](https://thehiddenbytes.vercel.app)
+   - Live Demo: https://the-hidden-bytes.vercel.app
 ## Usage
 
 1. **Upload an Image**: Drag and drop or click to select an image file

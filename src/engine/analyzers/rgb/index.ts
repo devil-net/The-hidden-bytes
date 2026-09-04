@@ -1,6 +1,7 @@
 /**
- * The Hidden Bytes V2 - Browser-Native RGB Channel & Bit-Plane Analyzer
+ * The Hidden Bytes V2 - Browser-Native RGB & Alpha Channel / Bit-Plane Analyzer
  * Replaces server-side Pillow & NumPy pipeline with 100% in-browser Canvas/ImageData processing.
+ * Supports Red, Green, Blue, Alpha, Grayscale, Inverted, LSB Half, and full 8-Bit Planes (0-7) for all 4 channels (R, G, B, A).
  */
 
 import { Analyzer, AnalysisResult, AnalyzerOptions, AnalyzerContext, FileDescriptor, Finding } from '../../types';
@@ -11,7 +12,7 @@ export class RGBAnalyzer implements Analyzer {
   readonly name = 'RGB Viewer';
   readonly version = '2.0.0-browser';
   readonly type = 'native-ts' as const;
-  readonly description = 'In-browser RGB color channel separation, bit-plane decomposition, and LSB visual analysis.';
+  readonly description = 'In-browser RGBA color channel separation, bit-plane decomposition (0-7 for R, G, B, A), and LSB visual analysis.';
   readonly supportedExtensions = ['png', 'jpg', 'jpeg', 'bmp', 'webp', 'gif'];
 
   supports(file: FileDescriptor): boolean {
@@ -28,7 +29,7 @@ export class RGBAnalyzer implements Analyzer {
     const bytes = await toUint8Array(input);
     const blob = new Blob([bytes.buffer as ArrayBuffer]);
 
-    context.onProgress?.(10, 'Decoding image...');
+    context.onProgress?.(10, 'Decoding image raster...');
 
     const imgBitmap = await createImageBitmap(blob);
     const width = imgBitmap.width;
@@ -56,17 +57,20 @@ export class RGBAnalyzer implements Analyzer {
     const srcData = rawImageData.data;
     const totalPixels = width * height;
 
-    context.onProgress?.(30, 'Calculating RGB histogram and bit planes...');
+    context.onProgress?.(30, 'Calculating RGBA histograms and bit planes...');
 
     const redHist = new Array(256).fill(0);
     const greenHist = new Array(256).fill(0);
     const blueHist = new Array(256).fill(0);
+    const alphaHist = new Array(256).fill(0);
 
     let rLsbCount = 0;
     let gLsbCount = 0;
     let bLsbCount = 0;
+    let aLsbCount = 0;
+    let nonOpaquePixels = 0;
 
-    // Collect first 500 RGBA samples for inspector
+    // Collect first 500 RGBA samples for pixel inspector
     const rgbaSamples: Array<{ x: number; y: number; r: number; g: number; b: number; a: number }> = [];
     const sampleLimit = Math.min(500, totalPixels);
 
@@ -79,10 +83,14 @@ export class RGBAnalyzer implements Analyzer {
       redHist[r]++;
       greenHist[g]++;
       blueHist[b]++;
+      alphaHist[a]++;
 
       if (r & 1) rLsbCount++;
       if (g & 1) gLsbCount++;
       if (b & 1) bLsbCount++;
+      if (a & 1) aLsbCount++;
+
+      if (a < 255) nonOpaquePixels++;
 
       if (rgbaSamples.length < sampleLimit) {
         const pixelIdx = i / 4;
@@ -95,13 +103,14 @@ export class RGBAnalyzer implements Analyzer {
     const findings: Finding[] = [
       {
         type: 'DIMENSIONS',
-        description: `Image dimensions: ${width}x${height} (${totalPixels.toLocaleString()} pixels)`
+        description: `Image geometry: ${width}x${height} (${totalPixels.toLocaleString()} pixels, RGBA)`
       }
     ];
 
     const rLsbRatio = rLsbCount / totalPixels;
     const gLsbRatio = gLsbCount / totalPixels;
     const bLsbRatio = bLsbCount / totalPixels;
+    const aLsbRatio = aLsbCount / totalPixels;
 
     if (Math.abs(rLsbRatio - 0.5) < 0.02 && Math.abs(gLsbRatio - 0.5) < 0.02 && Math.abs(bLsbRatio - 0.5) < 0.02) {
       findings.push({
@@ -111,7 +120,15 @@ export class RGBAnalyzer implements Analyzer {
       });
     }
 
-    context.onProgress?.(60, 'Generating channel transformations...');
+    if (nonOpaquePixels > 0 && nonOpaquePixels < totalPixels) {
+      findings.push({
+        type: 'ALPHA_VARIATION',
+        severity: 'medium',
+        description: `Detected ${nonOpaquePixels.toLocaleString()} non-opaque alpha pixels (${((nonOpaquePixels / totalPixels) * 100).toFixed(1)}% transparency variation), inspect Alpha channel for hidden masks.`
+      });
+    }
+
+    context.onProgress?.(60, 'Generating RGBA channel transformations...');
 
     const generateTransformedDataUrl = (transformFn: (r: number, g: number, b: number, a: number, out: Uint8ClampedArray, idx: number) => void): string => {
       const helperCanvas = document.createElement('canvas');
@@ -147,6 +164,15 @@ export class RGBAnalyzer implements Analyzer {
       previews.blue = generateTransformedDataUrl((_, __, b, a, out, idx) => {
         out[idx] = 0; out[idx + 1] = 0; out[idx + 2] = b; out[idx + 3] = a;
       });
+      // Alpha channel visualization (Grayscale intensity representing opacity)
+      previews.alpha = generateTransformedDataUrl((_, __, ___, a, out, idx) => {
+        out[idx] = a; out[idx + 1] = a; out[idx + 2] = a; out[idx + 3] = 255;
+      });
+      // Grayscale / Luminance (ITU-R BT.601)
+      previews.grayscale = generateTransformedDataUrl((r, g, b, _, out, idx) => {
+        const y = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        out[idx] = y; out[idx + 1] = y; out[idx + 2] = y; out[idx + 3] = 255;
+      });
       previews.inverse = generateTransformedDataUrl((r, g, b, a, out, idx) => {
         out[idx] = 255 - r; out[idx + 1] = 255 - g; out[idx + 2] = 255 - b; out[idx + 3] = a;
       });
@@ -157,16 +183,17 @@ export class RGBAnalyzer implements Analyzer {
         out[idx + 3] = a;
       });
 
-      // Pre-render all 8 bit planes for all 3 channels (R, G, B)
-      const channels: ('red' | 'green' | 'blue')[] = ['red', 'green', 'blue'];
+      // Pre-render all 8 bit planes for all 4 channels (Red, Green, Blue, Alpha)
+      const channels: ('red' | 'green' | 'blue' | 'alpha')[] = ['red', 'green', 'blue', 'alpha'];
       for (const ch of channels) {
         for (let bit = 0; bit <= 7; bit++) {
           const key = `bitplane_${ch}_${bit}`;
-          previews[key] = generateTransformedDataUrl((r, g, b, _, out, idx) => {
+          previews[key] = generateTransformedDataUrl((r, g, b, a, out, idx) => {
             let val = 0;
             if (ch === 'red') val = (r >> bit) & 1;
             else if (ch === 'green') val = (g >> bit) & 1;
             else if (ch === 'blue') val = (b >> bit) & 1;
+            else if (ch === 'alpha') val = (a >> bit) & 1;
 
             const intensity = val ? 255 : 0;
             out[idx] = intensity;
@@ -178,7 +205,7 @@ export class RGBAnalyzer implements Analyzer {
       }
     }
 
-    context.onProgress?.(100, 'RGB analysis complete');
+    context.onProgress?.(100, 'RGBA analysis complete');
 
     return {
       analyzerId: this.id,
@@ -192,15 +219,18 @@ export class RGBAnalyzer implements Analyzer {
       warnings: [],
       data: {
         dimensions: { width, height },
+        hasAlphaChannel: nonOpaquePixels > 0,
         channels: {
           red: redHist,
           green: greenHist,
-          blue: blueHist
+          blue: blueHist,
+          alpha: alphaHist
         },
         lsbDistribution: {
           red: rLsbRatio,
           green: gLsbRatio,
-          blue: bLsbRatio
+          blue: bLsbRatio,
+          alpha: aLsbRatio
         },
         rgbaSamples,
         previews

@@ -630,17 +630,58 @@ export default function App() {
                 {activeToolId === 'steghide' && (
                   <div className="space-y-5">
                     <div className="bg-card border border-borderDark rounded-2xl p-6 space-y-4">
+                      {/* Stego Hints / Suggestions if found from metadata/comments */}
+                      {(() => {
+                        const metaHints: string[] = [];
+                        const metaRes = analysisResults['metadata'];
+                        if (metaRes?.data?.decodedStegoHints) {
+                          metaRes.data.decodedStegoHints.forEach((h: any) => {
+                            if (h.candidatePassphrase && !metaHints.includes(h.candidatePassphrase)) {
+                              metaHints.push(h.candidatePassphrase);
+                            }
+                            if (h.finalDecodedText && !metaHints.includes(h.finalDecodedText)) {
+                              metaHints.push(h.finalDecodedText);
+                            }
+                          });
+                        }
+                        if (metaHints.length > 0) {
+                          return (
+                            <div className="bg-surface border border-neonPink/40 rounded-xl p-3.5 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-neonPink uppercase tracking-wider">
+                                  Detected Passphrase Hints from Metadata/Comments:
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {metaHints.map((hint, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setSteghidePassword(hint)}
+                                    className="px-3 py-1 bg-card hover:bg-neonPink/20 text-neonPink border border-neonPink/40 rounded-lg text-xs font-mono font-semibold transition-all hover:scale-105"
+                                    title="Click to populate passphrase"
+                                  >
+                                    {hint} (Auto-Fill)
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
                       <div className="flex flex-col sm:flex-row gap-4">
                         <div className="flex-1">
                           <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
                             Passphrase (Optional):
                           </label>
                           <input
-                            type="password"
+                            type="text"
                             value={steghidePassword}
                             onChange={(e) => setSteghidePassword(e.target.value)}
                             placeholder="Enter password if encrypted"
-                            className="w-full bg-surface border border-borderDark text-white text-xs rounded-xl px-4 py-3 focus:outline-none focus:border-neonBlue"
+                            className="w-full bg-surface border border-borderDark text-white text-xs rounded-xl px-4 py-3 focus:outline-none focus:border-neonBlue font-mono"
                           />
                         </div>
                         <button
@@ -857,9 +898,98 @@ export default function App() {
                 )}
 
                 {activeToolId === 'metadata' && (
-                  <div className="bg-card border border-borderDark rounded-2xl p-6 space-y-4">
-                    <h3 className="text-sm font-bold text-white">Metadata Explorer</h3>
-                    <MetadataTreeViewer data={analysisResults['metadata']?.data?.metadata || {}} />
+                  <div className="space-y-6">
+                    {/* Extracted Comments & Stego Hints Alert Banner */}
+                    {((analysisResults['metadata']?.data?.decodedStegoHints && analysisResults['metadata'].data.decodedStegoHints.length > 0) ||
+                      (analysisResults['metadata']?.data?.allComments && analysisResults['metadata'].data.allComments.length > 0)) && (
+                      <div className="bg-card border border-neonPink rounded-2xl p-6 shadow-xl space-y-4">
+                        <div className="flex items-center justify-between border-b border-borderDark pb-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-neonPink animate-pulse" />
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                              Extracted Comments & Stego Passphrases
+                            </h3>
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-neonPink/20 text-neonPink border border-neonPink/40 uppercase">
+                            Discovered in Binary Stream
+                          </span>
+                        </div>
+
+                        {/* Raw Comments Table/List */}
+                        {analysisResults['metadata']?.data?.allComments && analysisResults['metadata'].data.allComments.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+                              Discovered Comments:
+                            </span>
+                            {analysisResults['metadata'].data.allComments.map((c: any, idx: number) => (
+                              <div key={idx} className="bg-surface p-3.5 rounded-xl border border-borderDark flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="space-y-0.5">
+                                  <span className="text-[11px] font-bold text-neonBlue font-mono">{c.source} {c.offset !== undefined ? `(Offset: 0x${c.offset.toString(16).toUpperCase()})` : ''}</span>
+                                  <p className="text-xs font-mono text-white select-all">{c.text}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Decoded Stego Hints */}
+                        {analysisResults['metadata']?.data?.decodedStegoHints && analysisResults['metadata'].data.decodedStegoHints.length > 0 && (
+                          <div className="space-y-3 pt-2 border-t border-borderDark">
+                            <span className="text-xs font-bold text-neonPink uppercase tracking-wider">
+                              Decoded Steganography Candidates:
+                            </span>
+                            {analysisResults['metadata'].data.decodedStegoHints.map((hint: any, idx: number) => (
+                              <div key={idx} className="bg-surface p-4 rounded-xl border border-neonPink/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs font-bold text-neonPink">{hint.sourceField}</span>
+                                    <span className="text-[11px] font-mono text-gray-400">({hint.originalValue})</span>
+                                  </div>
+                                  <p className="text-xs text-gray-300 font-mono">
+                                    <span className="text-gray-400">Decoded Chain:</span> {hint.decodedLayers.join(' → ')}
+                                  </p>
+                                  {hint.candidatePassphrase && (
+                                    <p className="text-xs text-neonBlue font-mono font-semibold">
+                                      Candidate Passphrase: <span className="underline bg-dark/60 px-1.5 py-0.5 rounded">{hint.candidatePassphrase}</span>
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center space-x-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (hint.candidatePassphrase) {
+                                        setSteghidePassword(hint.candidatePassphrase);
+                                      } else if (hint.finalDecodedText) {
+                                        setSteghidePassword(hint.finalDecodedText);
+                                      }
+                                      navigateToTool('steghide');
+                                    }}
+                                    className="px-4 py-2 bg-neonPink hover:bg-pink-600 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center space-x-1.5"
+                                  >
+                                    <span>Send to Steghide</span>
+                                    <ArrowRightIcon className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="bg-card border border-borderDark rounded-2xl p-6 space-y-4">
+                      <div className="flex justify-between items-center border-b border-borderDark pb-3">
+                        <h3 className="text-sm font-bold text-white">Metadata Explorer & ImageMagick Diagnostics</h3>
+                        {analysisResults['metadata']?.data?.sha256 && (
+                          <span className="text-[11px] font-mono text-gray-400">
+                            SHA-256: {analysisResults['metadata'].data.sha256.slice(0, 16)}...
+                          </span>
+                        )}
+                      </div>
+                      <MetadataTreeViewer data={analysisResults['metadata']?.data?.metadata || {}} />
+                    </div>
                   </div>
                 )}
 
@@ -920,12 +1050,12 @@ export default function App() {
 }
 
 /* -------------------------------------------------------------
- * RGB Viewer Detailed Sub-component
+ * RGB Viewer Detailed Sub-component (Supports R, G, B, Alpha)
  * -----------------------------------------------------------*/
 
 function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
-  const [activeMode, setActiveMode] = useState<'original' | 'red' | 'green' | 'blue' | 'inverse' | 'lsb_half' | 'bit_plane'>('original');
-  const [selectedChannel, setSelectedChannel] = useState<'red' | 'green' | 'blue'>('red');
+  const [activeMode, setActiveMode] = useState<'original' | 'red' | 'green' | 'blue' | 'alpha' | 'grayscale' | 'inverse' | 'lsb_half' | 'bit_plane'>('original');
+  const [selectedChannel, setSelectedChannel] = useState<'red' | 'green' | 'blue' | 'alpha'>('red');
   const [selectedBit, setSelectedBit] = useState<number>(0);
   const [showRgbaTable, setShowRgbaTable] = useState<boolean>(false);
 
@@ -948,7 +1078,7 @@ function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
     <div className="space-y-6">
       {/* Primary Channel Filter Buttons */}
       <div className="flex flex-wrap gap-2 justify-center">
-        {(['original', 'red', 'green', 'blue', 'inverse', 'lsb_half'] as const).map(mode => (
+        {(['original', 'red', 'green', 'blue', 'alpha', 'grayscale', 'inverse', 'lsb_half'] as const).map(mode => (
           <button
             key={mode}
             onClick={() => setActiveMode(mode)}
@@ -981,14 +1111,14 @@ function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
         )}
       </div>
 
-      {/* Interactive Bit-Plane Controller */}
+      {/* Interactive Bit-Plane Controller for all 4 channels */}
       <div className="bg-card border border-borderDark rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-3 w-full md:w-auto">
           <span className="text-xs font-bold text-white uppercase tracking-wider">Channel:</span>
           <select
             value={selectedChannel}
             onChange={(e) => {
-              setSelectedChannel(e.target.value as 'red' | 'green' | 'blue');
+              setSelectedChannel(e.target.value as 'red' | 'green' | 'blue' | 'alpha');
               setActiveMode('bit_plane');
             }}
             className="bg-surface border border-borderDark text-white text-xs rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-neonBlue"
@@ -996,6 +1126,7 @@ function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
             <option value="red">Red Channel</option>
             <option value="green">Green Channel</option>
             <option value="blue">Blue Channel</option>
+            <option value="alpha">Alpha Channel (Transparency)</option>
           </select>
         </div>
 
@@ -1040,7 +1171,7 @@ function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
             {rgbaSamples.map((p: any, idx: number) => (
               <div key={idx} className="bg-surface p-2 rounded-lg border border-borderDark text-gray-300">
                 <span className="text-gray-400 block text-[10px]">[{p.x},{p.y}]</span>
-                R:{p.r} G:{p.g} B:{p.b}
+                R:{p.r} G:{p.g} B:{p.b} A:{p.a}
               </div>
             ))}
           </div>
@@ -1053,7 +1184,7 @@ function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
           <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider text-center">
             LSB Bit-0 Frequency Ratios
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
             <div className="bg-surface p-3.5 rounded-xl border border-red-500/30">
               <span className="text-xs text-red-400 block font-medium">Red Channel</span>
               <span className="text-base font-bold font-mono text-white">{(lsbDistribution.red * 100).toFixed(1)}%</span>
@@ -1066,6 +1197,10 @@ function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
               <span className="text-xs text-blue-400 block font-medium">Blue Channel</span>
               <span className="text-base font-bold font-mono text-white">{(lsbDistribution.blue * 100).toFixed(1)}%</span>
             </div>
+            <div className="bg-surface p-3.5 rounded-xl border border-purple-500/30">
+              <span className="text-xs text-purple-400 block font-medium">Alpha Channel</span>
+              <span className="text-base font-bold font-mono text-white">{lsbDistribution.alpha !== undefined ? `${(lsbDistribution.alpha * 100).toFixed(1)}%` : '100%'}</span>
+            </div>
           </div>
         </div>
       )}
@@ -1074,7 +1209,7 @@ function RGBViewerDetail({ result }: { result?: AnalysisResult }) {
 }
 
 /* -------------------------------------------------------------
- * Metadata Tree Sub-component (Open by default)
+ * Metadata Tree Sub-component (Open by default, Forensic Table for Stats)
  * -----------------------------------------------------------*/
 
 function MetadataTreeViewer({ data }: { data: Record<string, any> }) {
@@ -1089,6 +1224,8 @@ function MetadataTreeViewer({ data }: { data: Record<string, any> }) {
     <ul className="space-y-3">
       {Object.entries(data).map(([key, value]) => {
         const isOpen = openState[key] !== false; // Open by default!
+        const isChannelStats = key.includes('Channel Statistics');
+
         return (
           <li key={key} className="bg-surface border border-borderDark rounded-xl p-4">
             {typeof value === 'object' && value !== null ? (
@@ -1102,13 +1239,47 @@ function MetadataTreeViewer({ data }: { data: Record<string, any> }) {
                 </button>
 
                 {isOpen && (
-                  <div className="mt-3 pt-3 border-t border-borderDark space-y-2">
-                    {Object.entries(value).map(([subKey, subVal]) => (
-                      <div key={subKey} className="flex flex-col sm:flex-row sm:justify-between py-1 text-xs border-b border-borderDark/40 last:border-0">
-                        <span className="text-neonPink font-medium">{subKey}:</span>
-                        <span className="text-gray-300 font-mono break-all sm:text-right">{String(subVal)}</span>
+                  <div className="mt-3 pt-3 border-t border-borderDark">
+                    {isChannelStats ? (
+                      /* Formatted Table for ImageMagick Channel Statistics */
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-borderDark text-xs font-mono">
+                          <thead>
+                            <tr className="text-gray-400">
+                              <th className="px-3 py-2 text-left font-semibold">Channel</th>
+                              <th className="px-3 py-2 text-left font-semibold">Minimum</th>
+                              <th className="px-3 py-2 text-left font-semibold">Maximum</th>
+                              <th className="px-3 py-2 text-left font-semibold">Mean</th>
+                              <th className="px-3 py-2 text-left font-semibold">Std Dev</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-borderDark/40 text-gray-300">
+                            {Object.entries(value).map(([channelName, statsObj]: [string, any]) => (
+                              <tr key={channelName} className="hover:bg-card/50">
+                                <td className="px-3 py-2 font-bold text-neonPink">{channelName}</td>
+                                <td className="px-3 py-2">{statsObj['Minimum'] || '-'}</td>
+                                <td className="px-3 py-2">{statsObj['Maximum'] || '-'}</td>
+                                <td className="px-3 py-2 text-white">{statsObj['Mean'] || '-'}</td>
+                                <td className="px-3 py-2 text-neonBlue">{statsObj['Standard Deviation'] || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="space-y-2">
+                        {Object.entries(value).map(([subKey, subVal]) => (
+                          <div key={subKey} className="flex flex-col sm:flex-row sm:justify-between py-1 text-xs border-b border-borderDark/40 last:border-0">
+                            <span className="text-neonPink font-medium">{subKey}:</span>
+                            {typeof subVal === 'object' && subVal !== null ? (
+                              <pre className="text-gray-300 font-mono text-xs whitespace-pre-wrap">{JSON.stringify(subVal, null, 2)}</pre>
+                            ) : (
+                              <span className="text-gray-300 font-mono break-all sm:text-right">{String(subVal)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

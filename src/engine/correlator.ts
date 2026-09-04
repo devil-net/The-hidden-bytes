@@ -55,7 +55,22 @@ export class FindingsCorrelator {
 
     const correlated: CorrelatedFinding[] = [];
 
-    // 1. Cross-reference: Trailing Overlay / Embedded Archive + High Entropy + Strings
+    // 1. Cross-reference: Steganography Passphrase Hints in Comments/Metadata
+    const metaRes = results.get('metadata');
+    if (metaRes) {
+      const stegoHints = metaRes.findings.filter(f => f.type === 'STEGO_PASSPHRASE_HINT');
+      for (const hint of stegoHints) {
+        correlated.push({
+          title: 'Stego Passphrase / Credential Uncovered',
+          confidence: 'high',
+          description: hint.description,
+          sourceAnalyzers: ['metadata', 'steghide'],
+          relatedFindings: [hint]
+        });
+      }
+    }
+
+    // 2. Cross-reference: Trailing Overlay / Embedded Archive + High Entropy + Strings
     const binwalkRes = results.get('binwalk');
     const entropyRes = results.get('entropy');
     const stringsRes = results.get('strings');
@@ -80,7 +95,7 @@ export class FindingsCorrelator {
       }
     }
 
-    // 2. Cross-reference: Trailing Overlay from Signatures with Strings in the overlay region
+    // 3. Cross-reference: Trailing Overlay from Signatures with Strings in the overlay region
     if (sigRes && stringsRes) {
       const overlayFinding = sigRes.findings.find(f => f.type === 'TRAILING_OVERLAY');
       if (overlayFinding && overlayFinding.offset !== undefined) {
@@ -100,7 +115,7 @@ export class FindingsCorrelator {
       }
     }
 
-    // 3. Flags and Credentials detected
+    // 4. Flags and Credentials detected
     const flagFindings = allFindings.filter(f => f.type === 'FLAG_DETECTED' || f.severity === 'critical');
     for (const flag of flagFindings) {
       correlated.push({
